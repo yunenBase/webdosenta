@@ -1,29 +1,49 @@
-import { Routes, Route, BrowserRouter } from 'react-router-dom';
-import TimeImageTable from './components/TimeImageTable';
-import Analytics from './components/Analytics';
-import Sidebar from './components/Sidebar';
-import SleepDurationChart from './components/SleepDurationChart';
-import SleepRowBarChart from './components/SleepRowBarChart';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './services/firebase'; // Sesuaikan path ke firebase.js Anda
 
-const App = () => {
+// Impor halaman login dan layout dashboard baru Anda
+import AuthPage from './components/AuthPage'; 
+import DashboardLayout from './components/DashboardLayout';
+
+function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Firebase listener untuk memeriksa status login secara real-time
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user); // user akan null jika tidak login
+      setLoading(false);
+    });
+
+    // Cleanup listener
+    return () => unsubscribe();
+  }, []);
+
+  // Tampilkan pesan loading saat Firebase sedang memeriksa status login
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen bg-gray-900 text-white">Loading...</div>;
+  }
+
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-gray-900 text-white">
-        <Sidebar />
-        <div className="flex-1 flex flex-col justify-center items-center space-y-10 p-4">
-          <h1 className="text-5xl font-bold text-purple-500">Sleep Monitoring</h1>
-          <div className="w-full max-w-4xl">
-            <Routes>
-              <Route path="/" element={<TimeImageTable />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/durations" element={<SleepDurationChart />} />
-              <Route path="/row" element={<SleepRowBarChart />} />
-            </Routes>
-          </div>
-        </div>
-      </div>
+      <Routes>
+        {/* Rute untuk halaman login */}
+        <Route 
+          path="/login" 
+          element={!currentUser ? <AuthPage /> : <Navigate to="/" />} 
+        />
+        
+        {/* Rute untuk semua halaman lain di dalam aplikasi */}
+        <Route 
+          path="/*" 
+          element={currentUser ? <DashboardLayout /> : <Navigate to="/login" />} 
+        />
+      </Routes>
     </BrowserRouter>
   );
-};
+}
 
 export default App;

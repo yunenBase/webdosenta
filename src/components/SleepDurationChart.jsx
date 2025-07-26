@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Select, MenuItem, FormControl, InputLabel, CircularProgress, Box, Typography } from '@mui/material';
 
 // Daftarkan komponen Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -11,29 +12,27 @@ const SleepDurationChart = () => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [dates, setDates] = useState([]); // Daftar tanggal dari Firestore
+  const [dates, setDates] = useState([]); // Daftar tanggal yang tersedia
   const [selectedDate, setSelectedDate] = useState(''); // Tanggal yang dipilih
 
+  // 1. useEffect ini hanya untuk mengambil daftar tanggal yang tersedia (satu kali)
   useEffect(() => {
     const fetchDates = async () => {
       try {
-        // Ambil semua dokumen di koleksi 'duration' untuk mendapatkan daftar tanggal
-        const durationRef = collection(db, 'duration');
-        const querySnapshot = await getDocs(durationRef);
+        const querySnapshot = await getDocs(collection(db, 'duration'));
         const availableDates = querySnapshot.docs.map(doc => doc.id);
         
-        // Urutkan tanggal secara descending (terbaru ke terlama)
         availableDates.sort((a, b) => new Date(b) - new Date(a));
         
         setDates(availableDates);
         
-        // Set tanggal terbaru sebagai default
         if (availableDates.length > 0) {
-          setSelectedDate(availableDates[0]);
+          setSelectedDate(availableDates[0]); // Set tanggal terbaru sebagai default
+        } else {
+          setLoading(false);
         }
-        setLoading(false);
       } catch (e) {
-        setError('Gagal mengambil daftar tanggal dari Firestore: ' + e.message);
+        setError('Gagal mengambil daftar tanggal: ' + e.message);
         setLoading(false);
       }
     };
@@ -41,158 +40,130 @@ const SleepDurationChart = () => {
     fetchDates();
   }, []);
 
+  // 2. useEffect ini berjalan HANYA ketika `selectedDate` berubah
   useEffect(() => {
-    if (!selectedDate) return; // Jangan ambil data jika tanggal belum dipilih
+    if (!selectedDate) return;
 
-    const fetchData = async () => {
+    const fetchDataForDate = async () => {
+      setLoading(true);
+      setError(null);
+      
       try {
-        setLoading(true);
-        const durationRef = collection(db, 'duration');
-        const querySnapshot = await getDocs(durationRef);
+        // Ambil HANYA SATU dokumen berdasarkan tanggal yang dipilih
+        const docRef = doc(db, 'duration', selectedDate);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          // Jika tidak ada data untuk tanggal ini, kosongkan chart
+          setChartData(null);
+          setLoading(false);
+          return;
+        }
         
-        // Proses data untuk grafik
+        // Logika pengelompokan durasi Anda (sudah benar)
         const durationGroups = {
-          '<10': [],
-          '11-20': [],
-          '21-30': [],
-          '31-40': [],
-          '41-50': [],
-          '>50': []
+          '<10 detik': 0,
+          '10-20 detik': 0,
+          '21-30 detik': 0,
+          '31-40 detik': 0,
+          '41-50 detik': 0,
+          '>50 detik': 0
         };
 
-        querySnapshot.forEach((doc) => {
-          if (doc.id === selectedDate) {
-            const data = doc.data();
-            Object.keys(data).forEach((id) => {
-              const session = data[id];
-              const duration = session.duration;
+        const data = docSnap.data();
+        Object.values(data).forEach(session => {
+          const duration = session.duration;
 
-              // Kelompokkan ID berdasarkan durasi
-              if (duration <= 10) {
-                durationGroups['<10'].push(id);
-              } else if (duration <= 20) {
-                durationGroups['11-20'].push(id);
-              } else if (duration <= 30) {
-                durationGroups['21-30'].push(id);
-              } else if (duration <= 40) {
-                durationGroups['31-40'].push(id);
-              } else if (duration <= 50) {
-                durationGroups['41-50'].push(id);
-              } else {
-                durationGroups['>50'].push(id);
-              }
-            });
-          }
+          if (duration < 10) durationGroups['<10 detik']++;
+          else if (duration <= 20) durationGroups['10-20 detik']++;
+          else if (duration <= 30) durationGroups['21-30 detik']++;
+          else if (duration <= 40) durationGroups['31-40 detik']++;
+          else if (duration <= 50) durationGroups['41-50 detik']++;
+          else durationGroups['>50 detik']++;
         });
-
-        // Hitung jumlah mahasiswa (ID unik) dalam setiap rentang
-        const labels = Object.keys(durationGroups);
-        const studentCounts = labels.map(label => durationGroups[label].length);
-
-        // Siapkan data untuk Chart.js
+        
         setChartData({
-          labels: labels,
-          datasets: [
-            {
-              label: 'Jumlah Mahasiswa',
-              data: studentCounts,
-              backgroundColor: 'rgba(75, 192, 192, 0.5)', // Hijau
-              borderColor: 'rgba(75, 192, 192, 1)',
-              borderWidth: 1
-            }
-          ]
+          labels: Object.keys(durationGroups),
+          datasets: [{
+            label: 'Jumlah Sesi Tidur',
+            data: Object.values(durationGroups),
+            backgroundColor: 'rgba(153, 102, 255, 0.6)',
+            borderColor: 'rgba(153, 102, 255, 1)',
+            borderWidth: 1
+          }]
         });
-        setLoading(false);
+
       } catch (e) {
-        setError('Gagal mengambil data dari Firestore: ' + e.message);
+        setError('Gagal mengambil data durasi: ' + e.message);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchDataForDate();
   }, [selectedDate]);
 
-  const handleDateChange = (event) => {
-    setSelectedDate(event.target.value);
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
-
-  if (dates.length === 0) {
-    return <div>Tidak ada data durasi tidur yang tersedia.</div>;
-  }
-
-  if (!chartData || chartData.labels.every(label => chartData.datasets[0].data[chartData.labels.indexOf(label)] === 0)) {
-    return (
-      <div>
-        <label htmlFor="date-select">Pilih Tanggal: </label>
-        <select  id="date-select" value={selectedDate} onChange={handleDateChange}>
-          {dates.map(date => (
-            <option key={date} value={date}>
-              {date}
-            </option>
-          ))}
-        </select>
-        <div>Tidak ada data durasi tidur untuk tanggal {selectedDate}.</div>
-      </div>
-    );
-  }
-
-  // Opsi untuk grafik
   const options = {
     responsive: true,
     plugins: {
-      legend: {
-        position: 'top'
-      },
+      legend: { position: 'top' },
       title: {
         display: true,
-        text: `Jumlah Mahasiswa Berdasarkan Rata-Rata Durasi Tidur (${selectedDate})`
+        text: `Distribusi Durasi Tidur (${selectedDate})`,
+        font: { size: 18 },
+        color: '#FFF'
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${context.raw} sesi`;
+          }
+        }
       }
     },
     scales: {
       y: {
         beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Jumlah Mahasiswa'
-        },
-        ticks: {
-          stepSize: 1 // Pastikan sumbu Y hanya menampilkan bilangan bulat
-        }
+        title: { display: true, text: 'Jumlah Sesi', color: '#CCC' },
+        ticks: { stepSize: 1, color: '#CCC' }
       },
       x: {
-        title: {
-          display: true,
-          text: 'Rata-Rata Durasi Tidur (detik)'
-        }
+        title: { display: true, text: 'Rentang Durasi', color: '#CCC' },
+        ticks: { color: '#CCC' }
       }
     }
   };
 
   return (
-    <div>
-      <label htmlFor="date-select">Pilih Tanggal: </label>
-      <select
-        id="date-select"
-        value={selectedDate}
-        onChange={handleDateChange}
-        style={{ color: 'white', backgroundColor: 'black', border: '1px solid white' }}
-      >
-        {dates.map(date => (
-          <option key={date} value={date} style={{ backgroundColor: 'black', color: 'white' }}>
-            {date}
-          </option>
-        ))}
-      </select>
-      <Bar data={chartData} options={options} />
-    </div>
+    <Box sx={{ width: '100%', maxWidth: '800px', margin: 'auto', p: 3, backgroundColor: '#2d3748', borderRadius: 2 }}>
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel id="date-select-label" sx={{color: '#A0AEC0'}}>Pilih Tanggal</InputLabel>
+        <Select
+          labelId="date-select-label"
+          value={selectedDate}
+          label="Pilih Tanggal"
+          onChange={(e) => setSelectedDate(e.target.value)}
+          sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: '#A0AEC0' }, '.MuiSvgIcon-root': { color: 'white' } }}
+        >
+          {dates.map(date => (
+            <MenuItem key={date} value={date}>{date}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {loading && <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>}
+      {error && <Typography color="error" align="center">{error}</Typography>}
+      
+      {!loading && !error && chartData && (
+        <Bar data={chartData} options={options} />
+      )}
+
+      {!loading && !error && !chartData && (
+         <Typography align="center" sx={{ color: '#A0AEC0', mt: 4 }}>
+           Tidak ada data durasi tidur untuk tanggal {selectedDate}.
+         </Typography>
+      )}
+    </Box>
   );
 };
 

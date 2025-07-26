@@ -1,0 +1,115 @@
+/* src/components/AuthPage.css */
+
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #121212; /* Latar belakang gelap utama */
+  padding: 20px;
+  font-family: 'Poppins', sans-serif; /* Ganti dengan font pilihan Anda */
+}
+
+.auth-box {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 30px;
+  background-color: rgba(30, 30, 30, 0.75); /* Warna kotak semi-transparan */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  backdrop-filter: blur(10px); /* Efek kaca buram */
+  text-align: center;
+  color: #f0f0f0;
+}
+
+.auth-box h2 {
+  margin-bottom: 10px;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.auth-subtitle {
+  margin-bottom: 30px;
+  color: #a0a0a0;
+  font-size: 0.9rem;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 16px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-group input::placeholder {
+  color: #888888;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #6a5af9; /* Warna aksen saat input aktif */
+  box-shadow: 0 0 0 3px rgba(106, 90, 249, 0.3);
+}
+
+.error-message {
+  color: #ff6b6b; /* Merah untuk pesan error */
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.auth-button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #6a5af9, #d667cd); /* Gradien untuk tombol */
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.auth-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.auth-button:disabled {
+  background: #555;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.toggle-text {
+  margin-top: 25px;
+  font-size: 0.9rem;
+  color: #a0a0a0;
+}
+
+.toggle-link {
+  color: #6a5af9;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.toggle-link:hover {
+  text-decoration: underline;
+  color: #8a7dfc;
+}
