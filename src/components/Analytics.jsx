@@ -35,7 +35,7 @@ export default function AnalyticsChart() {
           setSelectedDate(availableDates[0]);
         }
       } catch (e) {
-        setError('Gagal memuat daftar tanggal.');
+        setError('Gagal memuat daftar tanggal. ');
         console.error(e);
       }
     };
