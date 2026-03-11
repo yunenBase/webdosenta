@@ -42,12 +42,15 @@ jobs :
       - name: Build the application
         run: npm run build
 
-      - name: Set Docker tags
-        id: docker-tags
+      - name: Set Docker tag
+        id: docker-tag
         run: |
-          echo "IMAGE_TAG=react-app:${GITHUB_SHA}" >> $GITHUB_ENV
+          SHORT_SHA=${GITHUB_SHA::8}
+          BRANCH_NAME=$(echo ${GITHUB_REF_NAME} | tr '/' '-')
+          echo "DOCKER_TAG=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_ENV
+
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            echo "IMAGE_TAG=react-app:${GITHUB_REF_NAME}" >> $GITHUB_ENV
+            echo "DOCKER_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
           fi
       
       - name: Build Docker image
