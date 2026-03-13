@@ -1,4 +1,5 @@
 name: CI/CD Pipeline
+
 on:
   push:
     branches: [ main ]
@@ -6,27 +7,22 @@ on:
       - 'v*.*.*'
   pull_request:
     branches: [ main ]
-    tags:
-      - 'v*.*.*'
 
-jobs : 
+jobs:
   build-and-push:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
-        
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      
+          node-version: 18
+
       - name: Create .env file
         run: |
           echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env
@@ -35,15 +31,14 @@ jobs :
           echo "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" >> .env
           echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
           echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env
-      
+
       - name: Install dependencies
         run: npm install
 
-      - name: Build the application
+      - name: Build application
         run: npm run build
 
       - name: Set Docker tag
-        id: docker-tag
         run: |
           SHORT_SHA=${GITHUB_SHA::8}
           BRANCH_NAME=$(echo ${GITHUB_REF_NAME} | tr '/' '-')
@@ -52,9 +47,23 @@ jobs :
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             echo "DOCKER_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
           fi
-      
+
+      - name: Show Docker tag
+        run: echo "Docker tag is ${{ env.DOCKER_TAG }}"
+
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/my-react-app:${{ env.DOCKER_TAG }} .
-      
+        if: github.event_name != 'pull_request'
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/my-react-app:${{ env.DOCKER_TAG }} .
+
       - name: Push Docker image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/my-react-app:${{ env.DOCKER_TAG }}
+        if: github.event_name != 'pull_request'
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/my-react-app:${{ env.DOCKER_TAG }}
